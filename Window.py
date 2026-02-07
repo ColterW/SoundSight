@@ -77,15 +77,15 @@ class Window:
 
         volumeSlider = Scale(
             controls,
-            from_=0.0,
-            to=1.0,
-            resolution=0.01,
+            from_=0,
+            to=100,
+            resolution=1,
             orient=HORIZONTAL,
             label="Volume",
             length=200,
-            command=self.AudioController.SetVolume
+            command = lambda v: self.AudioController.SetVolume(float(v))
         )
-        volumeSlider.set(self.AudioController.Volume)
+        volumeSlider.set(self.AudioController.Volume * 100)
         volumeSlider.pack(side=RIGHT, padx=20)
 
     def OnPrevious(self):

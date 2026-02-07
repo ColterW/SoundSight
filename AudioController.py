@@ -121,6 +121,7 @@ class AudioController:
             self._stream.stop()
             self._stream.close()
             self._stream = None
+            self.Samples = None
         self.IsPlaying = False
 
     def SetVolume(self, value: float) -> None:
@@ -132,4 +133,7 @@ class AudioController:
         Args:
             value (float): New value for audio volume.
         """
-        self.Volume = max(0.0, min(1.0, float(value)))
+        if value > 0.99:
+            value = value / 100
+
+        self.Volume = max(0.0, min(1.0, value))
