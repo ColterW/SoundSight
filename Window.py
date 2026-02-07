@@ -15,6 +15,7 @@ class Window:
         self.AudioController = audioController
 
         self.__InitializeMenuBar()
+        self.__InitializePlaybackControls()
 
     def __InitializeMenuBar(self):
         # Create menu bar
@@ -45,6 +46,55 @@ class Window:
         )
 
         self.MainWindow.config(menu = menubar)
+
+    def __InitializePlaybackControls(self):
+        controls = Frame(self.MainWindow, bg="black")
+        controls.pack(side=BOTTOM, fill=X, pady=10)
+
+        prevBtn = Button(
+            controls,
+            text="⏮",
+            width=5,
+            command=self.OnPrevious
+        )
+        prevBtn.pack(side=LEFT, padx=10)
+
+        playPauseBtn = Button(
+            controls,
+            text="⏯",
+            width=5,
+            command=self.AudioController.TogglePlayPause
+        )
+        playPauseBtn.pack(side=LEFT, padx=10)
+
+        nextBtn = Button(
+            controls,
+            text="⏭",
+            width=5,
+            command=self.OnNext
+        )
+        nextBtn.pack(side=LEFT, padx=10)
+
+        volumeSlider = Scale(
+            controls,
+            from_=0.0,
+            to=1.0,
+            resolution=0.01,
+            orient=HORIZONTAL,
+            label="Volume",
+            length=200,
+            command=self.AudioController.SetVolume
+        )
+        volumeSlider.set(self.AudioController.Volume)
+        volumeSlider.pack(side=RIGHT, padx=20)
+
+    def OnPrevious(self):
+        # TODO: hook into playlist
+        self.AudioController.Stop()
+
+    def OnNext(self):
+        # TODO: hook into playlist
+        self.AudioController.Stop()
 
     def Shutdown(self):
         self.AudioController.Stop()
