@@ -7,10 +7,13 @@ class Window:
     INACTIVITY_TIMEOUT_MS = 3000
 
     MainWindow: Frame
+    MenuBar: Menu
     ControlFrame: Frame
+    FullScreen: bool
     AudioController
 
     _hideControlsAfterId: str
+    _controlsAnimating: bool
 
     def __init__(self, audioController: AudioController):
         # Setup application window
@@ -19,6 +22,8 @@ class Window:
 
         self.MainWindow.geometry("1280x720")
         self.MainWindow.config(background = "black")
+
+        self.FullScreen = False
 
         # Require audio controller as it is necessary for the application
         self.AudioController = audioController
@@ -29,6 +34,12 @@ class Window:
         # Track mouse activity
         self.MainWindow.bind("<Motion>", self._OnMouseMove)
         self._hideControlsAfterId = None
+
+        # Track application resizing
+        self.MainWindow.bind("<Configure>", self._OnResize)
+        self._controlsAnimating = False
+
+        self.MainWindow.bind("<F11>", self._ToggleFullscreen)
 
     def _OnMouseMove(self, event = None):
         # Cancel any existing scheduled hide
@@ -49,9 +60,9 @@ class Window:
 
     def _InitializeMenuBar(self):
         # Create menu bar
-        menubar = Menu(self.MainWindow)
-        filemenu = Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu = filemenu)
+        self.MenuBar = Menu(self.MainWindow)
+        filemenu = Menu(self.MenuBar, tearoff=0)
+        self.MenuBar.add_cascade(label="File", menu = filemenu)
 
         filemenu.add_command(
             label="Open File", 
@@ -75,7 +86,7 @@ class Window:
             command = self.Shutdown
         )
 
-        self.MainWindow.config(menu = menubar)
+        self.MainWindow.config(menu = self.MenuBar)
 
     def _InitializePlaybackControls(self):
         self.ControlFrame = Frame(self.MainWindow, bg="black")
@@ -143,33 +154,66 @@ class Window:
             self._AnimateHideStep()
 
     def _AnimateHideStep(self):
+        self._controlsAnimating = True
+
         # Get current y position
         y = self.ControlFrame.winfo_y()
-        h = self.ControlFrame.winfo_height()
-        max_y = self.MainWindow.winfo_height()  # slide completely off the bottom
+        maxY = self.MainWindow.winfo_height()  # slide completely off the bottom
+        width = self.MainWindow.winfo_width()
+        self.ControlFrame.place(x=0, y=y, width=width)
 
-        if y < max_y:
+        if y < maxY:
             # Move controls down by 5 pixels per step
             y += 5
             self.ControlFrame.place(y=y)
+
+            if self.MainWindow["menu"] is not "":
+                self.MainWindow.config(menu="")
+
             self.MainWindow.after(10, self._AnimateHideStep)
         else:
             # Fully hidden
             self.ControlFrame.place_forget()
+            self._controlsAnimating = False
 
     def _AnimateShowStep(self):
+        self._controlsAnimating = True
+
         y = self.ControlFrame.winfo_y()
-        targetY = self.MainWindow.winfo_height() - self.ControlFrame.winfo_height()
+        targetY = self.MainWindow.winfo_height() - self.ControlFrame.winfo_height() - 10
         x = 0
         width = self.MainWindow.winfo_width()
 
         if y > targetY:
             y -= 5
             self.ControlFrame.place(x=x, y=y, width=width)
+
+            if self.MainWindow["menu"] is "":
+                self.MainWindow.config(menu=self.MenuBar)
+
             self.MainWindow.after(10, self._AnimateShowStep)
         else:
             # Ensure exact final position
             self.ControlFrame.place(x=x, y=targetY, width=width)
+            self._controlsAnimating = False
+
+    def _OnResize(self, event):
+        if hasattr(self, "ControlFrame") and not self._controlsAnimating:
+            # Keep the frame at the bottom, filling the width
+            frameHeight = self.ControlFrame.winfo_height()
+            self.ControlFrame.place(
+                x=0,
+                y=self.MainWindow.winfo_height() - frameHeight - 10,  # bottom + padding
+                width=self.MainWindow.winfo_width()
+            )
+
+    def _ToggleFullscreen(self, event=None):
+        self.FullScreen = not self.FullScreen
+        self.MainWindow.attributes("-fullscreen", self.FullScreen)
+
+    def _ExitFullscreen(self, event=None):
+        self.FullScreen = False
+        self.MainWindow.attributes("-fullscreen", False)
 
     def OnPrevious(self):
         # TODO: hook into playlist
