@@ -66,7 +66,7 @@ class Window:
 
         filemenu.add_command(
             label="Open File", 
-            command = lambda: FileImporting.SelectFile(self.AudioController)
+            command = self._OpenFile
         )
 
         filemenu.add_command(
@@ -92,34 +92,23 @@ class Window:
         self.ControlFrame = Frame(self.MainWindow, bg="black")
         # self.ControlFrame.pack(side=BOTTOM, fill=X, pady=10)
 
-        # Secondary frame just for buttons
-        # This is done to center the controls on the window
-        buttonFrame = Frame(self.ControlFrame, bg="black")
-        buttonFrame.place(relx=0.5, rely=0.5, anchor=CENTER)
-
-        prevBtn = Button(
-            buttonFrame,
-            text="⏮",
-            width=5,
-            command=self.OnPrevious
+        self.SeekVar = DoubleVar()
+        self.SeekBar = Scale(
+            self.ControlFrame,
+            from_=0,
+            to=100,
+            orient=HORIZONTAL,
+            length=800,
+            troughcolor="midnight blue",
+            variable=self.SeekVar,
+            showvalue=0
         )
-        prevBtn.pack(side=LEFT, padx=10)
+        self.SeekBar.pack(side=TOP, pady=(0, 5))  # above playback buttons
+        self.SeekBar.bind("<ButtonRelease-1>", self._OnSeekRelease)
+        self.SeekBar.bind("<Button-1>", self._OnSeekClick)
 
-        playPauseBtn = Button(
-            buttonFrame,
-            text="⏯",
-            width=5,
-            command=self.AudioController.TogglePlayPause
-        )
-        playPauseBtn.pack(side=LEFT, padx=10)
 
-        nextBtn = Button(
-            buttonFrame,
-            text="⏭",
-            width=5,
-            command=self.OnNext
-        )
-        nextBtn.pack(side=LEFT, padx=10)
+        self._InitializeButtons()
 
         # Volume slider 0-100
         # TODO: Add mute button
@@ -149,6 +138,61 @@ class Window:
             height=frameHeight
         )
 
+    def _InitializeButtons(self):
+        # Secondary frame just for buttons
+        # This is done to center the controls on the window
+        buttonFrame = Frame(self.ControlFrame, bg="black")
+        buttonFrame.place(relx=0.5, rely=0.5, anchor=CENTER)
+
+        prevBtn = Button(
+            buttonFrame,
+            text="⏮",
+            width=5,
+            command=self.OnPrevious
+        )
+        prevBtn.pack(side=LEFT, padx=10)
+
+        self._playPauseBtn = Button(
+            buttonFrame,
+            text="▷",
+            width=5,
+            command=self._TogglePlayPause
+        )
+        self._playPauseBtn.pack(side=LEFT, padx=10)
+
+        stopBtn = Button(
+            buttonFrame,
+            text="▢",
+            width=5,
+            command=self._OnStop
+        )
+        stopBtn.pack(side=LEFT, padx=10)
+
+        nextBtn = Button(
+            buttonFrame,
+            text="⏭",
+            width=5,
+            command=self.OnNext
+        )
+        nextBtn.pack(side=LEFT, padx=10)
+
+    def _OpenFile(self):
+        FileImporting.SelectFile(self.AudioController)
+        self._playPauseBtn.config(text="⏸")
+        self.UpdateSeekBar()
+
+    def _TogglePlayPause(self):
+        if self.AudioController.Samples is None:
+            return
+
+        self.AudioController.TogglePlayPause()
+        self._playPauseBtn.config(text="⏸" if self.AudioController.IsPlaying else "▶")
+
+    def _OnStop(self):
+        self.AudioController.Stop()
+        self._playPauseBtn.config(text="▷")
+        self.SeekBar.set(0)
+
     def _HideControls(self):
         if self.AudioController.IsPlaying:
             self._AnimateHideStep()
@@ -167,7 +211,7 @@ class Window:
             y += 5
             self.ControlFrame.place(y=y)
 
-            if self.MainWindow["menu"] is not "":
+            if self.MainWindow["menu"] != "":
                 self.MainWindow.config(menu="")
 
             self.MainWindow.after(10, self._AnimateHideStep)
@@ -188,7 +232,7 @@ class Window:
             y -= 5
             self.ControlFrame.place(x=x, y=y, width=width)
 
-            if self.MainWindow["menu"] is "":
+            if self.MainWindow["menu"] == "":
                 self.MainWindow.config(menu=self.MenuBar)
 
             self.MainWindow.after(10, self._AnimateShowStep)
@@ -222,6 +266,47 @@ class Window:
     def OnNext(self):
         # TODO: hook into playlist
         self.AudioController.Stop()
+
+    def _OnSeekClick(self, event):
+        # Get total width of the Scale widget
+        scaleWidth = self.SeekBar.winfo_width()
+
+        # Clicked x position
+        clickX = event.x
+
+        # Calculate corresponding value (0-100)
+        newValue = (clickX / scaleWidth) * 100
+
+        # Update the variable
+        self.SeekVar.set(newValue)
+
+        # Perform actual seek in audio
+        if self.AudioController.Samples is not None:
+            totalSamples = len(self.AudioController.Samples)
+            newIndex = int(totalSamples * (newValue / 100))
+            self.AudioController.Seek(newIndex)
+
+    def _OnSeekRelease(self, event):
+        if self.AudioController.Samples is None:
+            return
+
+        # Get current slider value
+        percent = self.SeekVar.get() / 100
+        total_samples = len(self.AudioController.Samples)
+        new_index = int(total_samples * percent)
+
+        self.AudioController.Seek(new_index)
+
+    def UpdateSeekBar(self):
+        if self.AudioController.Samples is None:
+            return
+
+        totalSamples = len(self.AudioController.Samples)
+        percent = (self.AudioController._position / totalSamples) * 100
+        self.SeekVar.set(percent)
+        
+        # Schedule next update
+        self.MainWindow.after(100, self.UpdateSeekBar)
 
     def Shutdown(self):
         self.AudioController.Stop()
