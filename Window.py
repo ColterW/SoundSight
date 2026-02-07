@@ -3,6 +3,15 @@ from AudioController import AudioController
 import FileImporting
 
 class Window:
+    # 3 Second inactivity timeout (no mouse movement)
+    INACTIVITY_TIMEOUT_MS = 3000
+
+    MainWindow: Frame
+    ControlFrame: Frame
+    AudioController
+
+    _hideControlsAfterId: str
+
     def __init__(self, audioController: AudioController):
         # Setup application window
         self.MainWindow = Tk()
@@ -14,10 +23,31 @@ class Window:
         # Require audio controller as it is necessary for the application
         self.AudioController = audioController
 
-        self.__InitializeMenuBar()
-        self.__InitializePlaybackControls()
+        self._InitializeMenuBar()
+        self._InitializePlaybackControls()
 
-    def __InitializeMenuBar(self):
+        # Track mouse activity
+        self.MainWindow.bind("<Motion>", self._OnMouseMove)
+        self._hideControlsAfterId = None
+
+    def _OnMouseMove(self, event = None):
+        # Cancel any existing scheduled hide
+        if self._hideControlsAfterId:
+            self.MainWindow.after_cancel(self._hideControlsAfterId)
+
+        # Show controls if hidden
+        if not self.ControlFrame.winfo_ismapped():
+            self._AnimateShowStep()
+            # controlsHeight = self.ControlFrame.winfo_reqheight()
+            # self.ControlFrame.place(x=0, y=self.MainWindow.winfo_height() - controlsHeight)
+        
+        # Schedule controls to hide after timeout
+        self._hideControlsAfterId = self.MainWindow.after(
+            self.INACTIVITY_TIMEOUT_MS,
+            self._HideControls
+        )
+
+    def _InitializeMenuBar(self):
         # Create menu bar
         menubar = Menu(self.MainWindow)
         filemenu = Menu(menubar, tearoff=0)
@@ -35,7 +65,7 @@ class Window:
 
         filemenu.add_command(
             label = "Close File", 
-            command = lambda: None
+            command = self.AudioController.Stop
         )
 
         filemenu.add_separator()
@@ -47,12 +77,17 @@ class Window:
 
         self.MainWindow.config(menu = menubar)
 
-    def __InitializePlaybackControls(self):
-        controls = Frame(self.MainWindow, bg="black")
-        controls.pack(side=BOTTOM, fill=X, pady=10)
+    def _InitializePlaybackControls(self):
+        self.ControlFrame = Frame(self.MainWindow, bg="black")
+        # self.ControlFrame.pack(side=BOTTOM, fill=X, pady=10)
+
+        # Secondary frame just for buttons
+        # This is done to center the controls on the window
+        buttonFrame = Frame(self.ControlFrame, bg="black")
+        buttonFrame.place(relx=0.5, rely=0.5, anchor=CENTER)
 
         prevBtn = Button(
-            controls,
+            buttonFrame,
             text="⏮",
             width=5,
             command=self.OnPrevious
@@ -60,7 +95,7 @@ class Window:
         prevBtn.pack(side=LEFT, padx=10)
 
         playPauseBtn = Button(
-            controls,
+            buttonFrame,
             text="⏯",
             width=5,
             command=self.AudioController.TogglePlayPause
@@ -68,25 +103,73 @@ class Window:
         playPauseBtn.pack(side=LEFT, padx=10)
 
         nextBtn = Button(
-            controls,
+            buttonFrame,
             text="⏭",
             width=5,
             command=self.OnNext
         )
         nextBtn.pack(side=LEFT, padx=10)
 
+        # Volume slider 0-100
+        # TODO: Add mute button
         volumeSlider = Scale(
-            controls,
+            self.ControlFrame,
             from_=0,
             to=100,
             resolution=1,
             orient=HORIZONTAL,
+            troughcolor="SkyBlue1",
             label="Volume",
             length=200,
             command = lambda v: self.AudioController.SetVolume(float(v))
         )
         volumeSlider.set(self.AudioController.Volume * 100)
+        volumeSlider.configure(relief = "raised", bd = 3)
         volumeSlider.pack(side=RIGHT, padx=20)
+
+        self.MainWindow.update_idletasks()
+        frameHeight = self.ControlFrame.winfo_reqheight()
+        frameWidth = self.MainWindow.winfo_width()
+        # Place at bottom with 10px padding
+        self.ControlFrame.place(
+            x=0,
+            y=self.MainWindow.winfo_height() - frameHeight - 10,
+            width=frameWidth,
+            height=frameHeight
+        )
+
+    def _HideControls(self):
+        if self.AudioController.IsPlaying:
+            self._AnimateHideStep()
+
+    def _AnimateHideStep(self):
+        # Get current y position
+        y = self.ControlFrame.winfo_y()
+        h = self.ControlFrame.winfo_height()
+        max_y = self.MainWindow.winfo_height()  # slide completely off the bottom
+
+        if y < max_y:
+            # Move controls down by 5 pixels per step
+            y += 5
+            self.ControlFrame.place(y=y)
+            self.MainWindow.after(10, self._AnimateHideStep)
+        else:
+            # Fully hidden
+            self.ControlFrame.place_forget()
+
+    def _AnimateShowStep(self):
+        y = self.ControlFrame.winfo_y()
+        targetY = self.MainWindow.winfo_height() - self.ControlFrame.winfo_height()
+        x = 0
+        width = self.MainWindow.winfo_width()
+
+        if y > targetY:
+            y -= 5
+            self.ControlFrame.place(x=x, y=y, width=width)
+            self.MainWindow.after(10, self._AnimateShowStep)
+        else:
+            # Ensure exact final position
+            self.ControlFrame.place(x=x, y=targetY, width=width)
 
     def OnPrevious(self):
         # TODO: hook into playlist
