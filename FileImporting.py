@@ -1,6 +1,7 @@
 from tkinter import filedialog
+from AudioController import AudioController
 
-def SelectFile(audioController):
+def SelectFile(audioController: AudioController):
     file = filedialog.askopenfile(
         mode="rb",
         filetypes=[
