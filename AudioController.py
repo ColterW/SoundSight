@@ -73,6 +73,14 @@ class AudioController:
             samples = samples.reshape((-1, 2))
         self.Samples = samples.astype(np.float32) / (2 ** 15)
 
+    def Seek(self, index: int) -> None:
+        if self.Samples is None:
+            return
+        
+        self.Pause()
+        self._position = max(0, min(index, len(self.Samples)))
+        self.Play()
+
     def Play(self) -> None:
         """
         Play currently loaded audio file.
