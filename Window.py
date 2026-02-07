@@ -3,7 +3,7 @@ from AudioController import AudioController
 import FileImporting
 
 class Window:
-    def __init__(self, audioController):
+    def __init__(self, audioController: AudioController):
         # Setup application window
         self.MainWindow = Tk()
         self.MainWindow.title('SoundSight')
