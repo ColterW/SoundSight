@@ -122,7 +122,7 @@ class Window:
             troughcolor="SkyBlue1",
             label="Volume",
             length=200,
-            command = lambda v: self.AudioController.SetVolume(float(v))
+            command = lambda v: self.AudioController.SetVolume(float(v) / 100)
         )
         volumeSlider.set(self.AudioController.Volume * 100)
         volumeSlider.configure(relief = "raised", bd = 3)
