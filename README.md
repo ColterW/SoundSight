@@ -28,4 +28,4 @@ This project is being developed incrementally using Agile-style sprints and UML-
 Install required packages:
 
 ```bash
-pip install pydub sounddevice numpy pytest
+pip install -r requirements.txt
