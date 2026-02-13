@@ -77,9 +77,13 @@ class AudioController:
         if self.Samples is None:
             return
         
+        wasPlaying = self.IsPlaying
+
         self.Pause()
         self._position = max(0, min(index, len(self.Samples)))
-        self.Play()
+
+        if (wasPlaying):
+            self.Play()
 
     def Play(self) -> None:
         """

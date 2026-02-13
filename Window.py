@@ -10,6 +10,7 @@ class Window:
     MenuBar: Menu
     ControlFrame: Frame
     FullScreen: bool
+    IsDraggingSeek: bool = False
     AudioController
 
     _hideControlsAfterId: str
@@ -105,7 +106,7 @@ class Window:
         )
         self.SeekBar.pack(side=TOP, pady=(0, 5))  # above playback buttons
         self.SeekBar.bind("<ButtonRelease-1>", self._OnSeekRelease)
-        self.SeekBar.bind("<Button-1>", self._OnSeekClick)
+        self.SeekBar.bind("<ButtonPress-1>", self._OnSeekClick)
 
 
         self._InitializeButtons()
@@ -268,6 +269,8 @@ class Window:
         self.AudioController.Stop()
 
     def _OnSeekClick(self, event):
+        self.IsDraggingSeek = True
+
         # Get total width of the Scale widget
         scaleWidth = self.SeekBar.winfo_width()
 
@@ -296,9 +299,10 @@ class Window:
         new_index = int(total_samples * percent)
 
         self.AudioController.Seek(new_index)
+        self.IsDraggingSeek = False
 
     def UpdateSeekBar(self):
-        if self.AudioController.Samples is None:
+        if self.AudioController.Samples is None or self.IsDraggingSeek:
             return
 
         totalSamples = len(self.AudioController.Samples)
