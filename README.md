@@ -29,3 +29,12 @@ Install required packages:
 
 ```bash
 pip install -r requirements.txt
+```
+
+## Running the Application
+
+From the project root directory, run:
+
+```bash
+python Main.py
+```
