@@ -11,34 +11,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # Install system dependencies (FFmpeg for pydub)
-      - name: Install FFmpeg
+      # Install system dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg portaudio19-dev
 
-      # Install Python dependencies
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Optional: basic import/build check
       - name: Validate application imports
         run: |
           python -m compileall .
 
-      # Run unit tests
       - name: Run tests
         run: |
           pytest
